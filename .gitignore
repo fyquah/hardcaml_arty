@@ -1,0 +1,17 @@
+# OCaml things
+_build/
+**/.merlin
+
+.Xil/
+hardcaml_arty_top.v
+
+ips/*/*.v
+ips/*/*.veo
+ips/*/*.xdc
+ips/*/*.xml
+ips/*/doc/
+
+outputs/*.dcp
+outputs/*.bit
+outputs/*.log
+outputs/*.rpt
