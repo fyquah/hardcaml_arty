@@ -5,6 +5,10 @@ _build/
 .Xil/
 hardcaml_arty_top.v
 
+vivado_pid*.str
+*.jou
+*.log
+
 ips/*/*.v
 ips/*/*.veo
 ips/*/*.xdc
