@@ -7,6 +7,7 @@ module Top = struct
     type 'a t =
       { reset : 'a
       ; sys_clock : 'a
+      ; usb_uart_rx : 'a
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -14,6 +15,7 @@ module Top = struct
   module O = struct
     type 'a t =
       { led_4bits : 'a [@bits 4]
+      ; usb_uart_tx : 'a
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -25,14 +27,26 @@ module Top = struct
         ; resetn  = input.reset
         }
     in
+    let uart_state_machine = Uart.create () in
+    let sys_clk = clocking_wizard.clk_out1 in
     let user_application =
       create_fn
         scope
-        { sys_clk = clocking_wizard.clk_out1
+        { sys_clk
         ; ref_clk = clocking_wizard.clk_out2
+        ; uart_rx = Uart.get_rx_data_user uart_state_machine
         }
     in
-    { O. led_4bits = user_application.led_4bits }
+    Uart.set_tx_data_user uart_state_machine user_application.uart_tx;
+    let `Tx_data_raw uart_tx =
+      Uart.complete uart_state_machine
+        ~clock:sys_clk
+        ~rx_data_raw:input.usb_uart_rx
+    in
+
+    { O. led_4bits = user_application.led_4bits
+    ; usb_uart_tx = uart_tx
+    }
   ;;
 end
 

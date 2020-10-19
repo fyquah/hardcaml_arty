@@ -18,31 +18,75 @@ module Byte_with_valid = struct
 end
 
 module Tx_state_machine = struct
-  let create ~clock ~trigger (byte_with_valid : Signal.t Byte_with_valid.t) =
+  module States = struct
+    type t =
+      | S_idle
+      | S_start_bit
+      | S_data_bits
+      | S_stop_bit
+    [@@deriving sexp_of, compare, enumerate]
+  end
+
+  let create ~clock ~cycles_per_bit (byte_with_valid : Signal.t Byte_with_valid.t) =
     let spec = Reg_spec.create ~clock () in
-    let data =
-      Signal.reg spec ~enable:(byte_with_valid.valid &: trigger)
+    let sm = Always.State_machine.create (module States) spec ~enable:vdd in
+    let increment_cycle_counter = Always.Variable.reg spec ~enable:vdd ~width:1 in
+    let trigger =
+      assert (cycles_per_bit > 0);
+      if cycles_per_bit = 1 then
+        increment_cycle_counter.value
+      else
+        let cycle_cnt = wire (Int.ceil_log2 cycles_per_bit) in
+        let max_cycle_cnt = (cycles_per_bit - 1) in
+        let next =
+          mux2 (cycle_cnt ==:. max_cycle_cnt)
+            (zero (width cycle_cnt))
+            (cycle_cnt +:. 1)
+        in
+        cycle_cnt <== reg spec ~enable:increment_cycle_counter.value next;
+        reg spec ~enable:vdd (increment_cycle_counter.value &: (next ==:. max_cycle_cnt))
+    in
+    let byte_cnt = Always.Variable.reg spec ~enable:vdd ~width:3 in
+    let output = Always.Variable.wire ~default:vdd in
+    let data_latched =
+      reg spec ~enable:(sm.is S_idle &: byte_with_valid.valid)
         byte_with_valid.value
+      |> Signal.bits_lsb
     in
-    let busy =
-      Signal.reg_fb spec ~enable:vdd ~w:1 (fun fb ->
-          mux2 ((fb ==:. 0) &: byte_with_valid.valid &: trigger)
-            vdd
-            fb)
-    in
-    let ctr =
-      Signal.reg_fb spec ~enable:vdd ~w:3 (fun fb ->
-          mux2 ((busy ==:. 1) &: trigger)
-            (fb +:. 1)
-            (zero 3))
-    in
-    let data =
-      (* Parity bit ? *)
-      mux ctr (bits_lsb data)
-    in
-    mux2 busy
-      data
-      (mux2 byte_with_valid.valid gnd vdd)
+    Always.(compile [
+        sm.switch [
+          S_idle, [
+            when_ byte_with_valid.valid [
+              increment_cycle_counter <--. 1;
+              sm.set_next S_start_bit;
+            ]
+          ];
+          S_start_bit, [
+            output <--. 0;
+            when_ trigger [
+              (* byte_cnt <--. 0 impliciy here *)
+              sm.set_next S_data_bits;
+            ];
+          ];
+          S_data_bits, [
+            output <-- mux byte_cnt.value data_latched;
+            when_ trigger [
+              byte_cnt <-- (byte_cnt.value +:. 1);
+              when_ (byte_cnt.value ==:. 7) [
+                sm.set_next S_stop_bit;
+              ]
+            ];
+          ];
+          S_stop_bit, [
+            output <--. 1;
+            when_ trigger [
+              increment_cycle_counter <--. 0;
+              sm.set_next S_idle;
+            ]
+          ]
+        ]
+      ]);
+    output.value
   ;;
 end
 
@@ -108,25 +152,13 @@ let get_rx_data_user t =
   | Some rx_data_user -> rx_data_user
 ;;
 
-let trigger ~clock ~when_counter_is =
-  let spec = Reg_spec.create ~clock () in
-  let width = Signal.width when_counter_is in
-  let ctr_next = wire width in
-  let ctr = reg ~enable:vdd spec ctr_next in
-  ctr_next <== (
-    mux2 (ctr ==: when_counter_is)
-      (zero width)
-      (ctr +:. 1));
-  reg ~enable:vdd spec (ctr_next ==: when_counter_is)
-;;
-
 let trigger_of_baud_rate ~baud_rate ~clock_in_mhz ~clock =
   (* Approximately, we want to trigger [bit_rate] times every cycle.
    * Something somethign floating point??
    * *)
   let trigger_every_n_cycles = (clock_in_mhz * 1_000_000) / baud_rate in
   let width = Int.ceil_log2 trigger_every_n_cycles in
-  trigger
+  Utilities.trigger
     ~clock
     ~when_counter_is:(of_int ~width (trigger_every_n_cycles - 1))
 ;;
@@ -135,7 +167,7 @@ let complete t ~clock ~rx_data_raw =
   let trigger =
     trigger_of_baud_rate
       ~baud_rate:115_200
-      ~clock_in_mhz:100
+      ~clock_in_mhz:167
       ~clock
   in
 
@@ -150,7 +182,9 @@ let complete t ~clock ~rx_data_raw =
     | None ->
       `Tx_data_raw Signal.vdd
     | Some tx_data_user ->
-      `Tx_data_raw (Tx_state_machine.create ~trigger ~clock tx_data_user)
+      `Tx_data_raw (Tx_state_machine.create
+                      ~cycles_per_bit:(166_666_667 / 115_200)
+                      ~clock tx_data_user)
   end;
 ;;
 

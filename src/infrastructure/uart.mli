@@ -26,7 +26,7 @@ val complete
 module Expert : sig
   val create_tx_state_machine
     :  clock : Signal.t
-    -> trigger: Signal.t
+    -> cycles_per_bit: int
     -> Signal.t Byte_with_valid.t
     -> Signal.t 
 
