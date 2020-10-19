@@ -25,11 +25,13 @@ let create _scope (input : _ User_application.I.t) =
         ~when_counter_is:(of_int_minimum_width 167_777_777)
     in
     let value =
-      Utilities.counter
-        ~clock
-        ~trigger:valid
-        ~minimum:(Char.to_int 'a')
-        ~maximum:(Char.to_int 'z')
+      Signal.uresize 
+        (Utilities.counter
+           ~clock
+           ~trigger:valid
+           ~minimum:(Char.to_int 'a')
+           ~maximum:(Char.to_int 'z'))
+        8
     in
     { With_valid.valid; value }
   in
