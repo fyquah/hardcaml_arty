@@ -2,20 +2,23 @@
 _build/
 **/.merlin
 
+# Output artifacts
+outputs/*.dcp
+outputs/*.bit
+outputs/*.log
+outputs/*.rpt
+
 .Xil/
 hardcaml_arty_top.v
 
 vivado_pid*.str
 *.jou
 *.log
+hardcopy.0
 
 ips/*/*.v
 ips/*/*.veo
 ips/*/*.xdc
 ips/*/*.xml
 ips/*/doc/
-
-outputs/*.dcp
-outputs/*.bit
-outputs/*.log
-outputs/*.rpt
+ipshared/
