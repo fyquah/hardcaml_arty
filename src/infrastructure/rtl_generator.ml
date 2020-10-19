@@ -30,7 +30,8 @@ module Top = struct
     let uart_state_machine = Uart.create () in
     let sys_clk = clocking_wizard.clk_out1 in
     let user_application =
-      create_fn
+      User_application.hierarchical
+        create_fn
         scope
         { sys_clk
         ; ref_clk = clocking_wizard.clk_out2
@@ -43,8 +44,8 @@ module Top = struct
         ~clock:sys_clk
         ~rx_data_raw:input.usb_uart_rx
     in
-
-    { O. led_4bits = user_application.led_4bits
+    { O.
+      led_4bits = user_application.led_4bits
     ; usb_uart_tx = uart_tx
     }
   ;;

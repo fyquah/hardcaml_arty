@@ -1,3 +1,5 @@
+open Hardcaml
+
 module I : sig
   type 'a t =
     { sys_clk : 'a
@@ -14,3 +16,8 @@ module O : sig
     }
   [@@deriving sexp_of, hardcaml]
 end
+
+val hierarchical
+  : ?name: string
+  -> (Scope.t -> Signal.t I.t -> Signal.t O.t)
+  -> Scope.t -> Signal.t I.t -> Signal.t O.t
