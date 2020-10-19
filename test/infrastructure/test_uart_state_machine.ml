@@ -7,17 +7,15 @@ module Waveform = Hardcaml_waveterm.Waveform
 let clock = Signal.input "clock" 1
 
 let%expect_test "tx_state_machine" =
-  let trigger = Signal.input "trigger" 1 in
   let valid = Signal.input "valid" 1 in
   let value = Signal.input "value" 8 in
   let uart_tx =
     Signal.output 
       "uart_tx"
-      (Uart.Expert.create_tx_state_machine ~clock ~trigger { valid; value })
+      (Uart.Expert.create_tx_state_machine ~clock ~cycles_per_bit:1 { valid; value })
   in
   let circuit = Circuit.create_exn ~name:"tx_state_machine" [ uart_tx ] in
   let waves, sim = Hardcaml_waveterm.Waveform.create (Cyclesim.create circuit) in
-  (Cyclesim.in_port sim "trigger") := Bits.vdd;
   Cyclesim.cycle sim;
   Cyclesim.cycle sim;
   (Cyclesim.in_port sim "valid") := Bits.vdd;
@@ -40,15 +38,15 @@ let%expect_test "tx_state_machine" =
     ┌Signals───────────┐┌Waves─────────────────────────────────────────────────────┐
     │clock             ││┌─┐ ┌─┐ ┌─┐ ┌─┐ ┌─┐ ┌─┐ ┌─┐ ┌─┐ ┌─┐ ┌─┐ ┌─┐ ┌─┐ ┌─┐ ┌─┐ ┌─│
     │                  ││  └─┘ └─┘ └─┘ └─┘ └─┘ └─┘ └─┘ └─┘ └─┘ └─┘ └─┘ └─┘ └─┘ └─┘ │
-    │trigger           ││────────────────────────────────────────────────────────  │
-    │                  ││                                                          │
     │valid             ││        ┌───┐                                             │
     │                  ││────────┘   └───────────────────────────────────────────  │
     │                  ││────────┬───────────────────────────────────────────────  │
     │value             ││ 00     │57                                               │
     │                  ││────────┴───────────────────────────────────────────────  │
-    │uart_tx           ││────────┐   ┌───────────┐   ┌───┐   ┌───┐   ┌───────────  │
-    │                  ││        └───┘           └───┘   └───┘   └───┘             │
+    │uart_tx           ││────────────┐   ┌───────────┐   ┌───┐   ┌───┐   ┌───────  │
+    │                  ││            └───┘           └───┘   └───┘   └───┘         │
+    │                  ││                                                          │
+    │                  ││                                                          │
     │                  ││                                                          │
     │                  ││                                                          │
     │                  ││                                                          │

@@ -21,6 +21,8 @@ proc bind_ports_vector_to_pins {port_format pin_format n} {
 }
 
 bind_ports_vector_to_pins "led_4bits\[%d\]" "led_4bits_tri_o_%d" 4
+bind_port_to_pin          "usb_uart_rx"     "usb_uart_rxd"
+bind_port_to_pin          "usb_uart_tx"     "usb_uart_txd"
 bind_port_to_pin          "sys_clock"       "clk"
 bind_port_to_pin          "reset"           "reset"
 
