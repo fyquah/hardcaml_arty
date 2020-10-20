@@ -18,22 +18,7 @@ let create _scope (input : _ User_application.I.t) =
     concat_lsb (List.init 4 ~f:(fun i -> sel_top ctr 2 ==:. i))
   in
   let uart_tx =
-    let clock = input.sys_clk in
-    let valid =
-      Utilities.trigger
-        ~clock
-        ~when_counter_is:(of_int_minimum_width 167_777_777)
-    in
-    let value =
-      Signal.uresize 
-        (Utilities.counter
-           ~clock
-           ~trigger:valid
-           ~minimum:(Char.to_int 'a')
-           ~maximum:(Char.to_int 'z'))
-        8
-    in
-    { With_valid.valid; value }
+    { With_valid.valid = input.uart_rx.valid; value = input.uart_rx.value }
   in
   { User_application.O. led_4bits; uart_tx }
 ;;
