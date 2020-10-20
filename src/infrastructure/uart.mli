@@ -32,7 +32,7 @@ module Expert : sig
 
   val create_rx_state_machine
     :  clock : Signal.t
-    -> trigger: Signal.t
+    -> cycles_per_bit: int
     -> Signal.t 
     -> Signal.t Byte_with_valid.t
 end

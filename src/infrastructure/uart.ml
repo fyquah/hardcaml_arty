@@ -17,6 +17,37 @@ module Byte_with_valid = struct
   include Hardcaml.Interface.Make(Pre)
 end
 
+type counter =
+  { counter : Signal.t option
+  ; last_cycle_trigger : Signal.t
+  ; halfway_trigger : Signal.t
+  }
+
+let trigger_of_cycles ~clock ~cycles_per_trigger ~enable =
+  assert (cycles_per_trigger > 0);
+  if cycles_per_trigger = 1 then
+    { counter = None
+    ; last_cycle_trigger = enable
+    ; halfway_trigger    = enable
+    }
+  else
+    let spec = Reg_spec.create ~clock () in
+    let cycle_cnt = wire (Int.ceil_log2 cycles_per_trigger) in
+    let max_cycle_cnt = (cycles_per_trigger - 1) in
+    let next =
+      mux2 (cycle_cnt ==:. max_cycle_cnt)
+        (zero (width cycle_cnt))
+        (cycle_cnt +:. 1)
+    in
+    cycle_cnt <== reg spec ~enable next;
+    { counter = Some cycle_cnt
+    ; last_cycle_trigger =
+        reg spec ~enable:vdd (enable &: (next ==:. max_cycle_cnt))
+    ; halfway_trigger =
+        reg spec ~enable:vdd (enable &: (next ==:. (cycles_per_trigger / 2)))
+    }
+;;
+
 module Tx_state_machine = struct
   module States = struct
     type t =
@@ -31,20 +62,8 @@ module Tx_state_machine = struct
     let spec = Reg_spec.create ~clock () in
     let sm = Always.State_machine.create (module States) spec ~enable:vdd in
     let increment_cycle_counter = Always.Variable.reg spec ~enable:vdd ~width:1 in
-    let trigger =
-      assert (cycles_per_bit > 0);
-      if cycles_per_bit = 1 then
-        increment_cycle_counter.value
-      else
-        let cycle_cnt = wire (Int.ceil_log2 cycles_per_bit) in
-        let max_cycle_cnt = (cycles_per_bit - 1) in
-        let next =
-          mux2 (cycle_cnt ==:. max_cycle_cnt)
-            (zero (width cycle_cnt))
-            (cycle_cnt +:. 1)
-        in
-        cycle_cnt <== reg spec ~enable:increment_cycle_counter.value next;
-        reg spec ~enable:vdd (increment_cycle_counter.value &: (next ==:. max_cycle_cnt))
+    let { counter = _; last_cycle_trigger = trigger; halfway_trigger = _ } =
+      trigger_of_cycles ~clock ~cycles_per_trigger:cycles_per_bit ~enable:increment_cycle_counter.value
     in
     let byte_cnt = Always.Variable.reg spec ~enable:vdd ~width:3 in
     let output = Always.Variable.wire ~default:vdd in
@@ -91,37 +110,85 @@ module Tx_state_machine = struct
 end
 
 module Rx_state_machine = struct
+  module States = struct
+    type t =
+      | S_idle
+      | S_start_bit
+      | S_data_bits
+      | S_wait_for_stop_bit
+      | S_stop_bit
+    [@@deriving sexp_of, compare, enumerate]
+  end
+
   let rec shift_register ~enable ~spec ~n x =
     if n = 0 then
       []
     else
-      x :: shift_register ~enable ~spec ~n:(n - 1) (reg spec ~enable x)
+      let d = (reg spec ~enable x) in
+      d :: shift_register ~enable ~spec ~n:(n - 1) d
   ;;
 
-  let create ~clock ~trigger (rx_data_raw : Signal.t) =
+  let create ~clock ~cycles_per_bit (rx_data_raw : Signal.t) =
     let spec = Reg_spec.create ~clock () in
-    let ctr = wire 3 in
-    let last_cycle = (ctr ==:. 7) in
-    let busy =
-      Signal.reg_fb spec ~enable:vdd ~w:1 (fun busy ->
-          mux2 trigger
-            (mux2 (busy ==:. 0)
-               (mux2 (rx_data_raw ==: vdd)
-                  gnd
-                  vdd)
-               (mux2 last_cycle
-                  gnd
-                  vdd))
-            busy)
+    let sm = Always.State_machine.create (module States) spec ~enable:vdd in
+    let increment_cycle_counter = Always.Variable.reg spec ~enable:vdd ~width:1 in
+    let cycles_elapsed_for_bit =
+      trigger_of_cycles ~clock ~cycles_per_trigger:cycles_per_bit ~enable:increment_cycle_counter.value
     in
-    ctr <== (
-      Signal.reg_fb spec ~enable:vdd ~w:3 (fun fb ->
-          mux2 (busy ==:. 0)
-            (zero 3)
-            (fb +:. 1)));
+    let byte_cnt = Always.Variable.reg spec ~enable:vdd ~width:3 in
+    let consume_data_bit = Always.Variable.wire ~default:gnd in
+    let valid = Always.Variable.wire ~default:gnd in
+    ignore (sm.current -- "state" : Signal.t);
+    Always.(compile [
+        sm.switch [
+          S_idle, [
+            when_ (rx_data_raw ==:. 0) [
+              increment_cycle_counter <-- vdd;
+              sm.set_next S_start_bit;
+            ]
+          ];
+          S_start_bit, [
+            when_ cycles_elapsed_for_bit.last_cycle_trigger [
+              (* implicit byte_cnt <--. 0 here. *)
+              sm.set_next S_data_bits
+            ]
+          ];
+          S_data_bits, [
+            when_ cycles_elapsed_for_bit.halfway_trigger [
+              consume_data_bit <-- vdd;
+            ];
+
+            when_ cycles_elapsed_for_bit.last_cycle_trigger [
+              byte_cnt <-- byte_cnt.value +:. 1;
+
+              when_ (byte_cnt.value ==:. 7) [
+                sm.set_next S_wait_for_stop_bit;
+              ]
+            ]
+          ];
+          S_wait_for_stop_bit, [
+            if_ rx_data_raw [
+              sm.set_next S_stop_bit;
+            ] @@ elif cycles_elapsed_for_bit.last_cycle_trigger [
+              (* Overrun, drop frame. *)
+              sm.set_next S_idle;
+            ] @@ [
+            ]
+          ];
+          S_stop_bit, [
+            when_ cycles_elapsed_for_bit.last_cycle_trigger [
+              valid <--. 1;
+              increment_cycle_counter <-- gnd; 
+              sm.set_next S_idle;
+            ]
+          ]
+        ]]);
     { With_valid.
-      valid = last_cycle &: busy
-    ; value = Signal.concat_msb (shift_register ~enable:vdd ~n:8 ~spec rx_data_raw)
+      valid = valid.value
+    ; value =
+        Signal.concat_msb
+          (shift_register ~enable:consume_data_bit.value ~spec ~n:8
+             rx_data_raw)
     }
   ;;
 end
@@ -152,29 +219,11 @@ let get_rx_data_user t =
   | Some rx_data_user -> rx_data_user
 ;;
 
-let trigger_of_baud_rate ~baud_rate ~clock_in_mhz ~clock =
-  (* Approximately, we want to trigger [bit_rate] times every cycle.
-   * Something somethign floating point??
-   * *)
-  let trigger_every_n_cycles = (clock_in_mhz * 1_000_000) / baud_rate in
-  let width = Int.ceil_log2 trigger_every_n_cycles in
-  Utilities.trigger
-    ~clock
-    ~when_counter_is:(of_int ~width (trigger_every_n_cycles - 1))
-;;
-
 let complete t ~clock ~rx_data_raw =
-  let trigger =
-    trigger_of_baud_rate
-      ~baud_rate:115_200
-      ~clock_in_mhz:167
-      ~clock
-  in
-
   begin match t.rx_data_user with
     | None -> ()
     | Some dest ->
-      let src = Rx_state_machine.create ~trigger ~clock rx_data_raw in
+      let src = Rx_state_machine.create ~cycles_per_bit:(166_666_667 / 115_200) ~clock rx_data_raw in
       dest.valid <== src.valid;
       dest.value <== src.value;
   end;
