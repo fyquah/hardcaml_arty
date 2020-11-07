@@ -35,7 +35,7 @@ let create_ring_register ~clock ~clear ~enable initial_values =
 
 let create_rgb_led ~clock ~clear =
   let enable =
-    let width = 14 in
+    let width = 24 in
     let when_counter_is = of_int ~width ((1 lsl width) - 1) in
     Utilities.trigger ~clock ~when_counter_is
   in
