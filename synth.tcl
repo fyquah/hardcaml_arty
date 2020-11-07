@@ -1,3 +1,5 @@
+set_param board.repoPaths "boards/"
+
 create_project -in_memory -part xc7a35ticsg324-1L
 set_property board_part digilentinc.com:arty-a7-35:part0:1.0 [current_project]
 set output_dir "./outputs"
