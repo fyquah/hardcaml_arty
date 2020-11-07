@@ -1,3 +1,4 @@
+open Base
 open Hardcaml
 
 type create_fn = Scope.t -> Signal.t User_application.I.t -> Signal.t User_application.O.t
@@ -8,6 +9,7 @@ module Top = struct
       { reset : 'a
       ; sys_clock : 'a
       ; usb_uart_rx : 'a
+      ; push_buttons_4bits : 'a [@bits 4]
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -15,10 +17,19 @@ module Top = struct
   module O = struct
     type 'a t =
       { led_4bits : 'a [@bits 4]
+      ; led_rgb : 'a [@bits 12]
       ; usb_uart_tx : 'a
       }
     [@@deriving sexp_of, hardcaml]
   end
+
+  let cdc_trigger ~clock value  =
+    let spec = Reg_spec.create ~clock () in
+    let enable = Signal.vdd in
+    Signal.reg spec ~enable value
+    |> Fn.flip Signal.add_attribute (Rtl_attribute.Vivado.async_reg true)
+    |> Signal.reg spec ~enable 
+  ;;
 
   let create (create_fn : create_fn) scope (input : _ I.t) =
     let clocking_wizard =
@@ -28,25 +39,32 @@ module Top = struct
         }
     in
     let uart_state_machine = Uart.create () in
-    let sys_clk = clocking_wizard.clk_out1 in
+    let clk_166 = clocking_wizard.clk_out1 in
+    let clk_200 = clocking_wizard.clk_out2 in
     let user_application =
       User_application.hierarchical
         create_fn
         scope
-        { sys_clk
-        ; ref_clk = clocking_wizard.clk_out2
+        { clk_166 
+        ; clk_200
+        ; clear_n_166 = cdc_trigger ~clock:clk_166 clocking_wizard.locked
+        ; clear_n_200 = cdc_trigger ~clock:clk_200 clocking_wizard.locked
         ; uart_rx = Uart.get_rx_data_user uart_state_machine
         }
     in
     Uart.set_tx_data_user uart_state_machine user_application.uart_tx;
     let `Tx_data_raw uart_tx =
       Uart.complete uart_state_machine
-        ~clock:sys_clk
+        ~clock:clocking_wizard.clk_out1
         ~rx_data_raw:input.usb_uart_rx
     in
     { O.
       led_4bits = user_application.led_4bits
     ; usb_uart_tx = uart_tx
+    ; led_rgb =
+        List.concat_map (List.rev user_application.led_rgb) ~f:(fun led ->
+            [ led.b; led.g; led.r ])
+        |> Signal.concat_msb
     }
   ;;
 end

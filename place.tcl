@@ -3,6 +3,10 @@ set output_dir "outputs/"
 
 open_checkpoint $output_dir/post_synth.dcp
 
+########################
+# Various pin placements
+########################
+
 proc bind_port_to_pin { port_name pin_name } {
   set port       [get_ports "$port_name"]
   set pin        [get_board_part_pins "$pin_name"]
@@ -21,11 +25,13 @@ proc bind_ports_vector_to_pins {port_format pin_format n} {
   }
 }
 
-bind_ports_vector_to_pins "led_4bits\[%d\]" "led_4bits_tri_o_%d" 4
-bind_port_to_pin          "usb_uart_rx"     "usb_uart_rxd"
-bind_port_to_pin          "usb_uart_tx"     "usb_uart_txd"
-bind_port_to_pin          "sys_clock"       "clk"
-bind_port_to_pin          "reset"           "reset"
+bind_ports_vector_to_pins "led_4bits\[%d\]"          "led_4bits_tri_o_%d" 4
+bind_ports_vector_to_pins "led_rgb\[%d\]"            "rgb_led_tri_o_%d" 12
+bind_ports_vector_to_pins "push_buttons_4bits\[%d\]" "push_buttons_4bits_tri_i_%d" 4
+bind_port_to_pin          "usb_uart_rx"              "usb_uart_rxd"
+bind_port_to_pin          "usb_uart_tx"              "usb_uart_txd"
+bind_port_to_pin          "sys_clock"                "clk"
+bind_port_to_pin          "reset"                    "reset"
 
 opt_design
 place_design
