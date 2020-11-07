@@ -7,6 +7,7 @@ set output_dir "./outputs"
 read_ip      -verbose ips/design_1_clk_wiz_0_0/design_1_clk_wiz_0_0.xci
 read_verilog hardcaml_arty_top.v
 
+upgrade_ip [get_ips]
 set_property generate_synth_checkpoint false [get_files ips/design_1_clk_wiz_0_0/design_1_clk_wiz_0_0.xci]
 generate_target all [get_ips]
 validate_ip [get_ips]
