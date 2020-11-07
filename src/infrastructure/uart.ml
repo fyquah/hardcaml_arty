@@ -29,7 +29,7 @@ let trigger_of_cycles ~clock ~clear ~cycles_per_trigger ~active =
   let cycle_cnt = wire (Int.ceil_log2 cycles_per_trigger) in
   let max_cycle_cnt = (cycles_per_trigger - 1) in
   let next =
-    mux2 (~:active |: (cycle_cnt >=:. max_cycle_cnt))
+    mux2 (~:active |: (cycle_cnt ==:. max_cycle_cnt))
       (zero (width cycle_cnt))
       (cycle_cnt +:. 1)
   in
@@ -68,8 +68,8 @@ module Tx_state_machine = struct
         byte_with_valid.value
       |> Signal.bits_lsb
     in
-    ignore (sm.current -- "state" : Signal.t);
-    ignore (byte_cnt.value -- "byte_cnt" : Signal.t);
+    ignore (sm.current -- "tx_state" : Signal.t);
+    ignore (byte_cnt.value -- "tx_byte_cnt" : Signal.t);
     Always.(compile [
         sm.switch [
           S_idle, [
@@ -138,11 +138,12 @@ module Rx_state_machine = struct
     let byte_cnt = Always.Variable.reg spec ~enable:vdd ~width:3 in
     let consume_data_bit = Always.Variable.wire ~default:gnd in
     let valid = Always.Variable.wire ~default:gnd in
-    ignore (sm.current -- "state" : Signal.t);
-    ignore (byte_cnt.value -- "byte_cnt" : Signal.t); 
+    ignore (sm.current -- "rx_state" : Signal.t);
+    ignore (byte_cnt.value -- "rx_byte_cnt" : Signal.t); 
     Always.(compile [
         sm.switch [
           S_idle, [
+            byte_cnt <--. 0;
             when_ (rx_data_raw ==:. 0) [
               increment_cycle_counter <-- vdd;
               sm.set_next S_start_bit;
@@ -155,7 +156,6 @@ module Rx_state_machine = struct
                 sm.set_next S_idle;
               ]
             ] @@ elif cycles_elapsed_for_bit.last_cycle_trigger [
-              byte_cnt <--. 0;
               sm.set_next S_data_bits
             ] @@ [
             ]
