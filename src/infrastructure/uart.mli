@@ -20,18 +20,21 @@ val get_rx_data_user : t -> Signal.t Byte_with_valid.t
 val complete
   : t
   -> clock: Signal.t
+  -> clear: Signal.t
   -> rx_data_raw : Signal.t
   -> [ `Tx_data_raw of Signal.t ]
 
 module Expert : sig
   val create_tx_state_machine
     :  clock : Signal.t
+    -> clear: Signal.t
     -> cycles_per_bit: int
     -> Signal.t Byte_with_valid.t
     -> Signal.t 
 
   val create_rx_state_machine
     :  clock : Signal.t
+    -> clear: Signal.t
     -> cycles_per_bit: int
     -> Signal.t 
     -> Signal.t Byte_with_valid.t

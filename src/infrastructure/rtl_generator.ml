@@ -1,5 +1,6 @@
 open Base
 open Hardcaml
+open Signal
 
 type create_fn = Scope.t -> Signal.t User_application.I.t -> Signal.t User_application.O.t
 
@@ -41,13 +42,14 @@ module Top = struct
     let uart_state_machine = Uart.create () in
     let clk_166 = clocking_wizard.clk_out1 in
     let clk_200 = clocking_wizard.clk_out2 in
+    let clear_n_166 = cdc_trigger ~clock:clk_166 clocking_wizard.locked in
     let user_application =
       User_application.hierarchical
         create_fn
         scope
         { clk_166 
         ; clk_200
-        ; clear_n_166 = cdc_trigger ~clock:clk_166 clocking_wizard.locked
+        ; clear_n_166
         ; clear_n_200 = cdc_trigger ~clock:clk_200 clocking_wizard.locked
         ; uart_rx = Uart.get_rx_data_user uart_state_machine
         }
@@ -55,7 +57,8 @@ module Top = struct
     Uart.set_tx_data_user uart_state_machine user_application.uart_tx;
     let `Tx_data_raw uart_tx =
       Uart.complete uart_state_machine
-        ~clock:clocking_wizard.clk_out1
+        ~clock:clk_166
+        ~clear:~:(clear_n_166)
         ~rx_data_raw:input.usb_uart_rx
     in
     { O.
