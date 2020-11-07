@@ -3,22 +3,22 @@ _build/
 **/.merlin
 
 # Output artifacts
-outputs/*.dcp
-outputs/*.bit
-outputs/*.log
-outputs/*.rpt
+examples/*/outputs/*.dcp
+examples/*/outputs/*.bit
+examples/*/outputs/*.log
+examples/*/outputs/*.rpt
 
-.Xil/
-hardcaml_arty_top.v
+examples/*/ips/*/*.v
+examples/*/ips/*/*.veo
+examples/*/ips/*/*.xdc
+examples/*/ips/*/*.xml
+examples/*/ips/*/doc/
+examples/*/ipshared/
 
-vivado_pid*.str
-*.jou
-*.log
-hardcopy.0
+examples/*/.Xil/
+examples/*/hardcaml_arty_top.v
 
-ips/*/*.v
-ips/*/*.veo
-ips/*/*.xdc
-ips/*/*.xml
-ips/*/doc/
-ipshared/
+examples/*/vivado_pid*.str
+examples/*/*.jou
+examples/*/*.log
+examples/*/hardcopy.0

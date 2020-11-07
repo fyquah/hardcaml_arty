@@ -1,9 +1,9 @@
-.PHONY:  _build/default/src/designs/blinker.exe
+.PHONY:  ../../_build/default/examples/blinker/blinker.exe
 
-_build/default/src/designs/blinker.exe:
-	dune build src/designs/blinker.exe
+../../_build/default/examples/blinker/blinker.exe:
+	dune build blinker.exe
 
-hardcaml_arty_top.v: _build/default/src/designs/blinker.exe
+hardcaml_arty_top.v: ../../_build/default/examples/blinker/blinker.exe
 	$< >$@
 
 outputs/post_synth.dcp: synth.tcl hardcaml_arty_top.v
