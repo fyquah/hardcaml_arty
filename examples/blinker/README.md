@@ -14,6 +14,15 @@ djtgcfg prog --file outputs/harcaml_arty_top.bit -d Arty -i 0
 
 Then marvel at blinking LEDS.
 
+This example does three things (independently), mostly to try to demonstrate
+how some nice examples can be written with hardcaml.
+
+- Cycle through the 4 LEDS. One cycle is around 4 seconds
+- Cycle through the 12 RGB LEDs. One cycle is around 4 seconds
+- Uart loopback with a `115\_200` baud rate. To try this out, run `picocom -b
+  115200 /dev/ttyUSB1` (You might need to replace ttyUSB1 with something
+  different)
+
 ## Setting Up Vivado
 
 Install vivado [here](https://www.xilinx.com/support/download.html) , you
@@ -35,7 +44,7 @@ Then install digilent adept 2 utilities, which can be downloaded
 [here](https://store.digilentinc.com/digilent-adept-2-download-only/). This should
 provide the `djtagcfg` to write an FPGA bitstream via jtag.
 
-## Common Problems
+## (Anticipated) Common Problems
 
 1. **ERROR: failed to initialize scan chain**
 
@@ -52,3 +61,14 @@ Found 1 device(s)
 
 Then, make sure the `djtgcfg prog` is correct. Specifically, it is "Arty",
 _not "arty"_.
+
+2. **The UART loopback just freezes on me sometimes.**
+
+First try the following
+
+- Flash the FPGA firmware with `djtgcfg`  again
+- Hit the reset button on the FPGA
+- Plug it and unplug it
+- Try a (few) different USB cable
+
+Then, if all fails, submit an issue
