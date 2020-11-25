@@ -34,12 +34,12 @@ end
 module I : sig
   type 'a t =
     { clk_166 : 'a
-    (** (Exactly) 166.66667MHz clock and its corresponding synchronous 
-              active low clear. *)
+      (** (Exactly) 166.66667MHz clock and its corresponding synchronous 
+          active low clear. *)
     ; clear_n_166 : 'a
     ; clk_200 : 'a
-    (** (Exactly) 200.00000Mhz clock and its corresponding synchronous
-              active low clear. *)
+      (** (Exactly) 200.00000Mhz clock and its corresponding synchronous
+          active low clear. *)
     ; clear_n_200 : 'a
     ; uart_rx : 'a Uart.Byte_with_valid.t
     ; ethernet : 'a Ethernet.I.t
