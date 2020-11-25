@@ -11,6 +11,8 @@ module Top = struct
       ; sys_clock : 'a
       ; usb_uart_rx : 'a
       ; push_buttons_4bits : 'a [@bits 4]
+      ; eth_mii            : 'a Mii.I.t [@rtlprefix "eth_"]
+      ; eth_mdio           : 'a Mdio.I.t [@rtlprefix "eth_"]
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -20,6 +22,8 @@ module Top = struct
       { led_4bits : 'a [@bits 4]
       ; led_rgb : 'a [@bits 12]
       ; usb_uart_tx : 'a
+      ; eth_mii     : 'a Mii.O.t  [@rtlprefix "eth_"]
+      ; eth_mdio    : 'a Mdio.O.t [@rtlprefix "eth_"]
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -43,6 +47,20 @@ module Top = struct
     let clk_166 = clocking_wizard.clk_out1 in
     let clk_200 = clocking_wizard.clk_out2 in
     let clear_n_166 = cdc_trigger ~clock:clk_166 clocking_wizard.locked in
+    let user_application_o = User_application.O.Of_signal.wires () in
+    let tri_mode_ethernet_mac =
+      Tri_mode_ethernet_mac.create scope
+        { s_axis_tx = user_application_o.ethernet.tx
+        ; s_axis_pause_val = Signal.zero 16
+        ; s_axis_pause_req = Signal.zero 1
+        ; glbl_rstn        = clocking_wizard.locked
+        ; rx_axi_rstn      = clocking_wizard.locked
+        ; tx_axi_rstn      = clocking_wizard.locked
+        ; tx_ifg_delay     = Signal.zero 8
+        ; mii              = input.eth_mii
+        ; mdio             = input.eth_mdio
+        }
+    in
     let user_application =
       User_application.hierarchical
         create_fn
@@ -52,8 +70,15 @@ module Top = struct
         ; clear_n_166
         ; clear_n_200 = cdc_trigger ~clock:clk_200 clocking_wizard.locked
         ; uart_rx = Uart.get_rx_data_user uart_state_machine
+        ; ethernet =
+            { clk_rx  = tri_mode_ethernet_mac.rx_mac_aclk
+            ; rx      = tri_mode_ethernet_mac.s_axis_rx
+            ; clk_tx  = tri_mode_ethernet_mac.tx_mac_aclk
+            ; tx_dest = tri_mode_ethernet_mac.s_axis_tx
+            }
         }
     in
+    User_application.O.iter2 user_application_o user_application ~f:(<==);
     Uart.set_tx_data_user uart_state_machine user_application.uart_tx;
     let `Tx_data_raw uart_tx =
       Uart.complete uart_state_machine
@@ -68,6 +93,8 @@ module Top = struct
         List.concat_map (List.rev user_application.led_rgb) ~f:(fun led ->
             [ led.b; led.g; led.r ])
         |> Signal.concat_msb
+    ; eth_mii  = tri_mode_ethernet_mac.mii
+    ; eth_mdio = tri_mode_ethernet_mac.mdio
     }
   ;;
 end

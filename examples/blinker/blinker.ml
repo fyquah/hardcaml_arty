@@ -60,7 +60,12 @@ let create _scope (input : _ User_application.I.t) =
   let uart_tx =
     { With_valid.valid = input.uart_rx.valid; value = input.uart_rx.value }
   in
-  { User_application.O. led_4bits; uart_tx; led_rgb }
+  { User_application.O.
+    led_4bits
+  ; uart_tx
+  ; led_rgb
+  ; ethernet = User_application.Ethernet.O.unused (module Signal)
+  }
 ;;
 
 let () =
