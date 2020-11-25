@@ -17,7 +17,7 @@ let%expect_test "tx_state_machine" =
   in
   let circuit = Circuit.create_exn ~name:"tx_state_machine" [ uart_tx ] in
   let waves, sim = Hardcaml_waveterm.Waveform.create
-      (Cyclesim.create ~is_internal_port:(Fn.const true) circuit) in
+      (Cyclesim.create ~config:Cyclesim.Config.trace_all circuit) in
   Cyclesim.cycle sim;
   Cyclesim.cycle sim;
   (Cyclesim.in_port sim "valid") := Bits.vdd;
@@ -65,7 +65,7 @@ let%expect_test "rx_state_machine" =
   let valid = Signal.output "valid" uart_rx.valid in
   let value = Signal.output "value" uart_rx.value in
   let circuit = Circuit.create_exn ~name:"rx_state_machine" [ valid; value ] in
-  let waves, sim = Hardcaml_waveterm.Waveform.create (Cyclesim.create ~is_internal_port:(Fn.const true) circuit) in
+  let waves, sim = Hardcaml_waveterm.Waveform.create (Cyclesim.create ~config:Cyclesim.Config.trace_all circuit) in
   let valid = Cyclesim.out_port ~clock_edge:Before sim "valid" in
   let value = Cyclesim.out_port ~clock_edge:Before sim "value" in
   let cycle () =
@@ -149,7 +149,7 @@ let%expect_test "loopback" =
   in
   let waves, sim =
     Hardcaml_waveterm.Waveform.create
-      (Cyclesim.create ~is_internal_port:(Fn.const true) circuit)
+      (Cyclesim.create ~config:Cyclesim.Config.trace_all circuit)
   in
   Cyclesim.cycle sim;
   Cyclesim.cycle sim;
