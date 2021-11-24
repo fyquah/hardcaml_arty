@@ -5,7 +5,7 @@ module Ethernet = struct
   module I = struct
     type 'a t =
       { clk_rx  : 'a
-      ; rx      : 'a Axi_stream8.Source.t [@rtlprefix "rx_"]
+      ; rx      : 'a Axi_stream8.Source.t [@rtlprefix "rx_axis_mac_"]
       ; clk_tx  : 'a
       ; tx_dest : 'a Axi_stream8.Dest.t   [@rtlprefix "tx_"]
       }
@@ -14,7 +14,7 @@ end
 
   module O = struct
     type 'a t =
-      { tx : 'a Axi_stream8.Source.t [@rtlprefix "tx_"]
+      { tx : 'a Axi_stream8.Source.t [@rtlprefix "tx_axis_mac_"]
       }
     [@@deriving sexp_of, hardcaml]
 
