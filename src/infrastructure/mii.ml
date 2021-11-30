@@ -13,7 +13,7 @@ module O = struct
   type 'a t =
     { mii_tx_en : 'a
     ; mii_tx_er : 'a
-    ; mii_txd   : 'a [@Bits 4]
+    ; mii_txd   : 'a [@bits 4]
     }
   [@@deriving sexp_of, hardcaml]
 end
