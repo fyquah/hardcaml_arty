@@ -33,6 +33,18 @@ bind_port_to_pin          "usb_uart_tx"              "usb_uart_txd"
 bind_port_to_pin          "sys_clock"                "clk"
 bind_port_to_pin          "reset"                    "reset"
 
+bind_ports_vector_to_pins "eth_mii_rxd\[%d\]"        "eth_rxd_%d" 4
+bind_port_to_pin          "eth_mii_rx_er"            "eth_rx_er"
+bind_port_to_pin          "eth_mii_rx_dv"            "eth_rx_dv"
+bind_port_to_pin          "eth_mii_rx_clk"           "eth_rx_clk"
+
+bind_ports_vector_to_pins "eth_mii_txd\[%d\]"        "eth_txd_%d" 4
+bind_port_to_pin          "eth_mii_tx_en"            "eth_tx_en"
+bind_port_to_pin          "eth_mii_tx_clk"           "eth_tx_clk"
+
+bind_port_to_pin          "eth_mdc"                  "eth_mdc"
+bind_port_to_pin          "eth_mdio_i"               "eth_mdio_i"
+
 opt_design
 place_design
 phys_opt_design
