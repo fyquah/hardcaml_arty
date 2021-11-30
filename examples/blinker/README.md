@@ -1,7 +1,7 @@
 This example has been tested on the Vivado 2018.2 and 2020.2. This has been
 tested on the Arty A7 on my linux host machine.
 
-You need to install vivado and djtgcfg to run these examples. See
+You need to install vivado and djtgcfg to run these examples. You will also need to obtain a license from Xilinx to use the ethernet component. See
 a section below on some pointers on how to do this.
 
 To compile this example, run the following command.
@@ -43,6 +43,10 @@ cd path/to/Vivado/2018.2/data/xicom/cable_drivers/lin64/install_script/install_d
 Then install digilent adept 2 utilities, which can be downloaded
 [here](https://store.digilentinc.com/digilent-adept-2-download-only/). This should
 provide the `djtagcfg` to write an FPGA bitstream via jtag.
+
+## Obtaining a License for the Ethernet MAC
+
+See [this website](https://ethernetfmc.com/getting-a-license-for-the-xilinx-tri-mode-ethernet-mac/) for a guide.
 
 ## (Anticipated) Common Problems
 
