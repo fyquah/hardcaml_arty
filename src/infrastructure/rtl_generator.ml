@@ -12,18 +12,17 @@ module Top = struct
       ; usb_uart_rx : 'a
       ; push_buttons_4bits : 'a [@bits 4]
       ; eth_mii            : 'a Mii.I.t [@rtlprefix "eth_"]
-      ; eth_mdio           : 'a Mdio.I.t [@rtlprefix "eth_"]
       }
     [@@deriving sexp_of, hardcaml]
   end
 
   module O = struct
     type 'a t =
-      { led_4bits : 'a [@bits 4]
-      ; led_rgb : 'a [@bits 12]
+      { led_4bits   : 'a [@bits 4]
+      ; led_rgb     : 'a [@bits 12]
       ; usb_uart_tx : 'a
       ; eth_mii     : 'a Mii.O.t  [@rtlprefix "eth_"]
-      ; eth_mdio    : 'a Mdio.O.t [@rtlprefix "eth_"]
+      ; mdc         : 'a
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -33,12 +32,12 @@ module Top = struct
     let enable = Signal.vdd in
     Signal.reg spec ~enable value
     |> Fn.flip Signal.add_attribute (Rtl_attribute.Vivado.async_reg true)
-    |> Signal.reg spec ~enable 
+    |> Signal.reg spec ~enable
   ;;
 
-  let create (create_fn : create_fn) scope (input : _ I.t) =
+  let create ~instantiate_ethernet_mac (create_fn : create_fn) scope (input : _ I.t) =
     let clocking_wizard =
-      Clocking_wizard.create 
+      Clocking_wizard.create
         { clk_in1 = input.sys_clock
         ; resetn  = input.reset
         }
@@ -49,23 +48,25 @@ module Top = struct
     let clear_n_166 = cdc_trigger ~clock:clk_166 clocking_wizard.locked in
     let user_application_o = User_application.O.Of_signal.wires () in
     let tri_mode_ethernet_mac =
-      Tri_mode_ethernet_mac.create scope
-        { s_axis_tx = user_application_o.ethernet.tx
-        ; s_axis_pause_val = Signal.zero 16
-        ; s_axis_pause_req = Signal.zero 1
-        ; glbl_rstn        = clocking_wizard.locked
-        ; rx_axi_rstn      = clocking_wizard.locked
-        ; tx_axi_rstn      = clocking_wizard.locked
-        ; tx_ifg_delay     = Signal.zero 8
-        ; mii              = input.eth_mii
-        ; mdio             = input.eth_mdio
-        }
+      if instantiate_ethernet_mac then
+        Tri_mode_ethernet_mac.create scope
+          { s_axis_tx = user_application_o.ethernet.tx
+          ; s_axis_pause_val = Signal.zero 16
+          ; s_axis_pause_req = Signal.zero 1
+          ; glbl_rstn        = clocking_wizard.locked
+          ; rx_axi_rstn      = clocking_wizard.locked
+          ; tx_axi_rstn      = clocking_wizard.locked
+          ; tx_ifg_delay     = Signal.zero 8
+          ; mii              = input.eth_mii
+          }
+      else
+        Tri_mode_ethernet_mac.O.Of_signal.of_int 0
     in
     let user_application =
       User_application.hierarchical
         create_fn
         scope
-        { clk_166 
+        { clk_166
         ; clk_200
         ; clear_n_166
         ; clear_n_200 = cdc_trigger ~clock:clk_200 clocking_wizard.locked
@@ -94,15 +95,18 @@ module Top = struct
             [ led.b; led.g; led.r ])
         |> Signal.concat_msb
     ; eth_mii  = tri_mode_ethernet_mac.mii
-    ; eth_mdio = tri_mode_ethernet_mac.mdio
+    ; mdc = tri_mode_ethernet_mac.mdc
     }
   ;;
 end
 
-let generate (create_fn : create_fn) (output_mode : Rtl.Output_mode.t) =
+let generate ~instantiate_ethernet_mac (create_fn : create_fn) (output_mode : Rtl.Output_mode.t) =
   let module C = Circuit.With_interface(Top.I)(Top.O) in
   let scope = Scope.create () in
-  let circuit = C.create_exn ~name:"hardcaml_arty_top" (Top.create create_fn scope) in
+  let circuit =
+    C.create_exn ~name:"hardcaml_arty_top"
+      (Top.create ~instantiate_ethernet_mac create_fn scope)
+  in
   let database = Scope.circuit_database scope in
   Rtl.output ~database ~output_mode Rtl.Language.Verilog circuit
 ;;

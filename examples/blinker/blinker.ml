@@ -39,7 +39,7 @@ let create_rgb_led ~clock ~clear =
     let when_counter_is = of_int ~width ((1 lsl width) - 1) in
     Utilities.trigger ~clock ~when_counter_is
   in
-  let ring = 
+  let ring =
     create_ring_register ~clock ~clear ~enable
       (List.init 12 ~f:(fun i -> if i = 0 then vdd else gnd))
   in
@@ -69,5 +69,8 @@ let create _scope (input : _ User_application.I.t) =
 ;;
 
 let () =
-  Hardcaml_arty.Rtl_generator.generate create (To_channel Stdio.stdout)
+  Hardcaml_arty.Rtl_generator.generate
+    ~instantiate_ethernet_mac:false
+    create
+    (To_channel Stdio.stdout)
 ;;
