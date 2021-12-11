@@ -10,9 +10,8 @@ module I : sig
     ; glbl_rstn   : 'a
     ; rx_axi_rstn : 'a
     ; tx_axi_rstn : 'a
-    ; tx_ifg_delay : 'a
+    ; tx_ifg_delay : 'a [@bits 8]
     ; mii  : 'a Mii.I.t
-    ; mdio : 'a Mdio.I.t
     }
   [@@deriving sexp_of, hardcaml]
 end
@@ -35,7 +34,7 @@ module O : sig
     ; speedis10100 : 'a
     ; mac_irq : 'a
     ; mii  : 'a Mii.O.t
-    ; mdio : 'a Mdio.O.t
+    ; mdc : 'a
     }
   [@@deriving sexp_of, hardcaml]
 end
