@@ -1,0 +1,14 @@
+opam-version: "2.0"
+maintainer: "fyquah"
+authors: "fyquah"
+homepage: "https://github.com/fyquah/hardcaml_arty"
+bug-reports: "https://github.com/fyquah/hardcaml_arty/issues"
+dev-repo: "git+https://github.com/fyquah/hardcaml_arty.git"
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+]
+depends: [
+  "base"
+  "hardcaml"
+]
+synopsis: "A library to use Digilent Arty A7 Boards with Hardcaml"
