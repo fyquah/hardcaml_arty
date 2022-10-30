@@ -8,7 +8,7 @@ To compile this example, run the following command.
 
 ```bash
 source path/to/xilinx/installation/Vivado/2018.2/settings64.sh
-make outputs/hardcaml_arty_top.bit
+BOARD=arty-a7-35 make outputs/hardcaml_arty_top.bit
 djtgcfg prog --file outputs/hardcaml_arty_top.bit -d Arty -i 0
 ```
 
