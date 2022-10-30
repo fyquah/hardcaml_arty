@@ -2,7 +2,7 @@
 
 A library to use [Digilent Arty A7 Boards](https://reference.digilentinc.com/reference/programmable-logic/arty-a7/start) with [Hardcaml](https://github.com/janestreet/hardcaml).
 
-This library has been tested with Arty A7-35.
+This library has been tested with Arty A7 35 and Arty A7 100.
 
 ## Features
 
@@ -66,6 +66,7 @@ These files instruct Vivado to generate the bitstream for your design:
 - `route.tcl` generates the bitstream.
 
 The `Makefile` links these build steps together. You'll need to adjust it slightly for the RTL generation executable you made in the previous step (e.g. replacing "blinker" with "arty").
+The `Makefile` requires a `BOARD` env variable parameter which can be either `arty-a7-35` or `arty-a7-100`.
 
 ### How to Run
 
