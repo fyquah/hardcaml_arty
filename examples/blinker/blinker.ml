@@ -11,7 +11,7 @@ let of_int_minimum_width n =
 let create_led4_bits ~clock =
   let reg_spec = Reg_spec.create ~clock () in
   let ctr =
-    reg_fb reg_spec ~enable:vdd ~w:30 (fun fb -> fb +:. 1)
+    reg_fb reg_spec ~enable:vdd ~width:30 ~f:(fun fb -> fb +:. 1)
   in
   concat_lsb (List.init 4 ~f:(fun i -> sel_top ctr 2 ==:. i))
 ;;
